@@ -792,17 +792,26 @@
             }
             
             async runCalculation(key, data, mode) {
+                // Read slider value DIRECTLY here to ensure consistency
+                const warmupSteps = Math.round(Number(document.getElementById('warmupSlider').value));
+                
+                // Store for display purposes
+                this.targetSteps = warmupSteps;
+                
                 // Create cipher and run everything deterministically
                 const cipher = new PendulumCipher(key);
                 await cipher.initialize();
                 
-                // Fixed timestep warmup
+                // Fixed timestep warmup - use exact integer steps
                 const dt = 0.02;
-                for (let i = 0; i < this.targetSteps; i++) {
+                for (let i = 0; i < warmupSteps; i++) {
                     cipher.pendulum1.step(dt);
                     cipher.pendulum2.step(dt);
                     cipher.time += dt;
                 }
+                
+                // Log for debugging (can remove later)
+                console.log(`Warmup: ${warmupSteps} steps, time: ${cipher.time.toFixed(4)}s, key: "${key}"`);
                 
                 // Generate keystream and encrypt/decrypt
                 const keystream = await cipher.generateKeystream(data.length);
@@ -941,6 +950,14 @@
         
         // Initialize
         const ui = new PendulumCipherUI();
+        
+        // Ensure slider display is synced on page load
+        window.addEventListener('load', () => {
+            const slider = document.getElementById('warmupSlider');
+            const steps = Math.round(Number(slider.value));
+            document.getElementById('warmupValue').textContent = (steps / 60).toFixed(1) + 's';
+            console.log(`Page loaded. Slider initialized to ${steps} steps (${(steps/60).toFixed(1)}s)`);
+        });
     </script>
 </body>
 </html>
