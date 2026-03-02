@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Double Pendulum Encryption</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -336,8 +337,8 @@
             </div>
             
             <!-- Input Text -->
-            <label for="inputText">Input (plaintext or hex ciphertext):</label>
-            <textarea id="inputText" placeholder="Enter text to encrypt, or hex to decrypt..."></textarea>
+            <label for="inputText">Input (plaintext or Base64 ciphertext):</label>
+            <textarea id="inputText" placeholder="Enter text to encrypt, or Base64 to decrypt..."></textarea>
             
             <!-- Buttons -->
             <div class="button-row">
@@ -468,6 +469,33 @@
                 bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
             }
             return bytes;
+        }
+        
+        // Base64 encoding/decoding
+        function bytesToBase64(bytes) {
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+        
+        function base64ToBytes(base64) {
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes;
+        }
+        
+        // Compression using pako (zlib)
+        function compress(data) {
+            return pako.deflate(data);
+        }
+        
+        function decompress(data) {
+            return pako.inflate(data);
         }
         
         // ========================================
@@ -741,12 +769,15 @@
                     return;
                 }
                 
-                const data = new TextEncoder().encode(plaintext);
+                // Compress plaintext before encryption
+                const textBytes = new TextEncoder().encode(plaintext);
+                const compressed = compress(textBytes);
+                
                 this.pendingSteps = parseInt(document.getElementById('stepsSlider').value);
                 this.targetSteps = this.pendingSteps;  // Animation matches actual warmup steps
                 
                 // Do all calculation synchronously first (deterministic)
-                const result = await this.runCalculation(key, data, 'encrypt');
+                const result = await this.runCalculation(key, compressed, 'encrypt');
                 
                 // Store result for display after animation
                 this.pendingResult = result;
@@ -763,17 +794,17 @@
                     return;
                 }
                 
-                const ciphertextHex = document.getElementById('inputText').value.trim();
-                if (!ciphertextHex) {
-                    alert('Please enter hex ciphertext to decrypt');
+                const ciphertextBase64 = document.getElementById('inputText').value.trim();
+                if (!ciphertextBase64) {
+                    alert('Please enter Base64 ciphertext to decrypt');
                     return;
                 }
                 
                 let data;
                 try {
-                    data = hexToBytes(ciphertextHex);
+                    data = base64ToBytes(ciphertextBase64);
                 } catch (e) {
-                    alert('Invalid hex format');
+                    alert('Invalid Base64 format');
                     return;
                 }
                 
@@ -781,7 +812,16 @@
                 this.targetSteps = this.pendingSteps;  // Animation matches actual warmup steps
                 
                 // Do all calculation synchronously first (deterministic)
-                const result = await this.runCalculation(key, data, 'decrypt');
+                const decrypted = await this.runCalculation(key, data, 'decrypt');
+                
+                // Decompress the decrypted data
+                let result;
+                try {
+                    result = decompress(decrypted);
+                } catch (e) {
+                    alert('Decryption failed - wrong key or steps?');
+                    return;
+                }
                 
                 // Store result for display after animation
                 this.pendingResult = result;
@@ -885,24 +925,22 @@
             showResult() {
                 // Display the pre-computed result
                 if (this.pendingMode === 'encrypt') {
-                    const hexOutput = bytesToHex(this.pendingResult);
-                    document.getElementById('outputText').value = hexOutput;
-                    const preview = hexOutput.slice(0, 64) + (hexOutput.length > 64 ? '...' : '');
+                    const base64Output = bytesToBase64(this.pendingResult);
+                    document.getElementById('outputText').value = base64Output;
+                    const preview = base64Output.slice(0, 48) + (base64Output.length > 48 ? '...' : '');
                     this.setKeystream(preview);
-                    this.setStatus(`✓ Encrypted ${this.pendingResult.length} bytes (${this.pendingSteps} steps)`);
+                    this.setStatus(`✓ Encrypted & compressed (${this.pendingSteps} steps)`);
                     
                 } else if (this.pendingMode === 'decrypt') {
                     let output;
                     try {
                         output = new TextDecoder().decode(this.pendingResult);
                     } catch {
-                        const hex = bytesToHex(this.pendingResult);
-                        output = hex.match(/.{2}/g).slice(0, 100).join(' ');
-                        if (this.pendingResult.length > 100) output += `... (${this.pendingResult.length} bytes total)`;
+                        output = '[Binary data - cannot display as text]';
                     }
                     document.getElementById('outputText').value = output;
-                    this.setKeystream(`(decrypted ${this.pendingResult.length} bytes)`);
-                    this.setStatus(`✓ Decrypted ${this.pendingResult.length} bytes (${this.pendingSteps} steps)`);
+                    this.setKeystream(`(decrypted & decompressed)`);
+                    this.setStatus(`✓ Decrypted & decompressed (${this.pendingSteps} steps)`);
                     
                 } else if (this.pendingMode === 'encrypt-file') {
                     this.downloadFile(this.pendingResult, this.pendingFilename + '.enc');
