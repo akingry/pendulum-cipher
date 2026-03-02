@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pendulum Cipher - Chaos-Based Encryption</title>
+    <title>Double Pendulum Encryption</title>
     <style>
         * {
             margin: 0;
@@ -165,7 +165,7 @@
         .slider-value {
             color: #4ecdc4;
             font-family: 'Consolas', monospace;
-            min-width: 50px;
+            min-width: 70px;
             text-align: right;
         }
         
@@ -300,7 +300,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔐 Pendulum Cipher</h1>
+        <h1>🔐 Double Pendulum Encryption</h1>
         
         <!-- Left Panel - Visualization -->
         <div class="panel">
@@ -325,14 +325,14 @@
                 <label for="showKey" style="margin: 0;">Show key</label>
             </div>
             
-            <!-- Warmup Slider -->
+            <!-- Warmup Steps Slider -->
             <div class="slider-container">
-                <label>Chaos Warmup Time:</label>
+                <label>Chaos Steps:</label>
                 <div class="slider-row">
-                    <input type="range" id="warmupSlider" min="30" max="600" value="180">
-                    <span class="slider-value" id="warmupValue">3.0s</span>
+                    <input type="range" id="stepsSlider" min="500" max="2000" value="1000" step="100">
+                    <span class="slider-value" id="stepsValue">1000</span>
                 </div>
-                <div class="slider-hint">(More time = more chaos = different keystream)</div>
+                <div class="slider-hint">(Must match for encrypt/decrypt)</div>
             </div>
             
             <!-- Input Text -->
@@ -446,7 +446,7 @@
         // CRYPTO UTILITIES
         // ========================================
         async function sha512(data) {
-            const buffer = typeof data === 'string' 
+            const buffer = typeof data === 'string'
                 ? new TextEncoder().encode(data) 
                 : data;
             const hashBuffer = await crypto.subtle.digest('SHA-512', buffer);
@@ -471,7 +471,7 @@
         }
         
         // ========================================
-        // PENDULUM CIPHER
+        // DOUBLE PENDULUM ENCRYPTION
         // ========================================
         class PendulumCipher {
             constructor(key) {
@@ -603,10 +603,8 @@
                     document.getElementById('keyInput').type = e.target.checked ? 'text' : 'password';
                 });
                 
-                document.getElementById('warmupSlider').addEventListener('input', (e) => {
-                    const steps = parseInt(e.target.value);
-                    document.getElementById('warmupValue').textContent = (steps / 60).toFixed(1) + 's';
-                    this.targetSteps = steps;
+                document.getElementById('stepsSlider').addEventListener('input', (e) => {
+                    document.getElementById('stepsValue').textContent = e.target.value;
                 });
                 
                 document.getElementById('encryptBtn').addEventListener('click', () => this.encrypt());
@@ -629,7 +627,7 @@
             }
             
             setControls(enabled) {
-                const controls = ['keyInput', 'warmupSlider', 'inputText', 'encryptBtn', 
+                const controls = ['keyInput', 'stepsSlider', 'inputText', 'encryptBtn', 
                                  'decryptBtn', 'encryptFileBtn', 'decryptFileBtn'];
                 controls.forEach(id => {
                     document.getElementById(id).disabled = !enabled;
@@ -744,7 +742,8 @@
                 }
                 
                 const data = new TextEncoder().encode(plaintext);
-                this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
+                this.pendingSteps = parseInt(document.getElementById('stepsSlider').value);
+                this.targetSteps = this.pendingSteps;  // Animation matches actual warmup steps
                 
                 // Do all calculation synchronously first (deterministic)
                 const result = await this.runCalculation(key, data, 'encrypt');
@@ -778,7 +777,8 @@
                     return;
                 }
                 
-                this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
+                this.pendingSteps = parseInt(document.getElementById('stepsSlider').value);
+                this.targetSteps = this.pendingSteps;  // Animation matches actual warmup steps
                 
                 // Do all calculation synchronously first (deterministic)
                 const result = await this.runCalculation(key, data, 'decrypt');
@@ -792,28 +792,30 @@
             }
             
             async runCalculation(key, data, mode) {
-                // Read slider value DIRECTLY here to ensure consistency
-                const warmupSteps = Math.round(Number(document.getElementById('warmupSlider').value));
+                // ========================================
+                // CHAOS-BASED ENCRYPTION
+                // ========================================
+                const warmupSteps = parseInt(document.getElementById('stepsSlider').value);
+                const WARMUP_DT = 0.02;
                 
-                // Store for display purposes
-                this.targetSteps = warmupSteps;
-                
-                // Create cipher and run everything deterministically
                 const cipher = new PendulumCipher(key);
                 await cipher.initialize();
                 
-                // Fixed timestep warmup - use exact integer steps
-                const dt = 0.02;
+                // Warmup: let chaos develop
                 for (let i = 0; i < warmupSteps; i++) {
-                    cipher.pendulum1.step(dt);
-                    cipher.pendulum2.step(dt);
-                    cipher.time += dt;
+                    cipher.pendulum1.step(WARMUP_DT);
+                    cipher.pendulum2.step(WARMUP_DT);
+                    cipher.time += WARMUP_DT;
                 }
                 
-                // Warmup complete - cipher.time now equals warmupSteps * dt
-                
-                // Generate keystream and encrypt/decrypt
+                // Generate keystream
                 const keystream = await cipher.generateKeystream(data.length);
+                
+                // DEBUG: Log first 16 bytes of keystream
+                console.log('First 16 keystream bytes:', bytesToHex(keystream.slice(0, 16)));
+                console.log('==================');
+                
+                // XOR to encrypt/decrypt
                 const result = new Uint8Array(data.length);
                 for (let i = 0; i < data.length; i++) {
                     result[i] = data[i] ^ keystream[i];
@@ -842,10 +844,16 @@
                 // Step the visual pendulums
                 this.cipher.pendulum1.step(0.02);
                 this.cipher.pendulum2.step(0.02);
+                this.cipher.time += 0.02;
                 this.animationSteps++;
                 
                 // Update display
                 this.drawPendulums();
+                
+                // Generate and show evolving keystream every 10 frames
+                if (this.animationSteps % 10 === 0) {
+                    this.updateKeystreamPreview();
+                }
                 
                 const progress = Math.min(this.animationSteps / this.targetSteps, 1);
                 this.setProgress(progress * 100, `Warming up chaos... ${Math.round(progress * 100)}%`);
@@ -858,6 +866,22 @@
                 }
             }
             
+            async updateKeystreamPreview() {
+                // Get current pendulum states and hash them
+                const state1 = this.cipher.pendulum1.getStateBytes();
+                const state2 = this.cipher.pendulum2.getStateBytes();
+                const timeBytes = new Uint8Array(new Float64Array([this.cipher.time]).buffer);
+                
+                const combined = new Uint8Array(state1.length + state2.length + timeBytes.length);
+                combined.set(state1, 0);
+                combined.set(state2, state1.length);
+                combined.set(timeBytes, state1.length + state2.length);
+                
+                const hash = await sha256(combined);
+                const preview = bytesToHex(hash.slice(0, 16));
+                this.setKeystream(preview + '...');
+            }
+            
             showResult() {
                 // Display the pre-computed result
                 if (this.pendingMode === 'encrypt') {
@@ -865,7 +889,7 @@
                     document.getElementById('outputText').value = hexOutput;
                     const preview = hexOutput.slice(0, 64) + (hexOutput.length > 64 ? '...' : '');
                     this.setKeystream(preview);
-                    this.setStatus(`✓ Encrypted! (warmup: ${this.targetSteps} steps)`);
+                    this.setStatus(`✓ Encrypted ${this.pendingResult.length} bytes (${this.pendingSteps} steps)`);
                     
                 } else if (this.pendingMode === 'decrypt') {
                     let output;
@@ -878,16 +902,16 @@
                     }
                     document.getElementById('outputText').value = output;
                     this.setKeystream(`(decrypted ${this.pendingResult.length} bytes)`);
-                    this.setStatus(`✓ Decrypted! (warmup: ${this.targetSteps} steps)`);
+                    this.setStatus(`✓ Decrypted ${this.pendingResult.length} bytes (${this.pendingSteps} steps)`);
                     
                 } else if (this.pendingMode === 'encrypt-file') {
                     this.downloadFile(this.pendingResult, this.pendingFilename + '.enc');
-                    this.setStatus(`✓ Encrypted file: ${this.pendingResult.length.toLocaleString()} bytes`);
+                    this.setStatus(`✓ Encrypted file: ${this.pendingResult.length.toLocaleString()} bytes (${this.pendingSteps} steps)`);
                     
                 } else if (this.pendingMode === 'decrypt-file') {
                     const filename = this.pendingFilename.replace('.enc', '') || 'decrypted';
                     this.downloadFile(this.pendingResult, filename);
-                    this.setStatus(`✓ Decrypted file: ${this.pendingResult.length.toLocaleString()} bytes`);
+                    this.setStatus(`✓ Decrypted file: ${this.pendingResult.length.toLocaleString()} bytes (${this.pendingSteps} steps)`);
                 }
                 
                 this.setControls(true);
@@ -920,7 +944,8 @@
                 const data = new Uint8Array(buffer);
                 const filename = file.name;
                 
-                this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
+                this.pendingSteps = parseInt(document.getElementById('stepsSlider').value);
+                this.targetSteps = this.pendingSteps;  // Animation matches actual warmup steps
                 
                 // Do all calculation synchronously first (deterministic)
                 const result = await this.runCalculation(key, data, this.fileMode);
@@ -949,13 +974,6 @@
         
         // Initialize
         const ui = new PendulumCipherUI();
-        
-        // Ensure slider display is synced on page load
-        window.addEventListener('load', () => {
-            const slider = document.getElementById('warmupSlider');
-            const steps = Math.round(Number(slider.value));
-            document.getElementById('warmupValue').textContent = (steps / 60).toFixed(1) + 's';
-        });
     </script>
 </body>
 </html>
