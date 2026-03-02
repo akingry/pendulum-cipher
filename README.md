@@ -167,16 +167,6 @@ dt_warmup = 0.02  # Warmup/animation timestep (s)
 
 ## 📖 Usage
 
-### Web Version
-
-1. Open `pendulum_cipher.html` in a browser (or visit the [live demo](https://akingry.github.io/pendulum-cipher/))
-2. Enter your encryption key
-3. Adjust the **Chaos Steps** slider (500–2000) — this affects the output!
-4. Enter plaintext and click **ENCRYPT**
-5. Watch the pendulums animate and the keystream evolve
-6. Copy the hex ciphertext
-7. To decrypt: paste hex, use **same key + same chaos steps**, click **DECRYPT**
-
 ### Python CLI
 
 ```bash
