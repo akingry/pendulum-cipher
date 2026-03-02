@@ -125,38 +125,6 @@ Ciphertext ⊕ Keystream = Plaintext
 
 ---
 
-## 📊 Security Analysis
-
-### Strengths
-
-| Property | Description |
-|----------|-------------|
-| **Deterministic** | Same inputs always produce same outputs (required for decryption) |
-| **Chaotic** | Tiny key differences → completely different keystreams |
-| **Hash-based output** | SHA-256 ensures uniform distribution of keystream bytes |
-| **Large key space** | 16 floating-point parameters derived from key |
-
-### Weaknesses & Caveats
-
-| Issue | Description |
-|-------|-------------|
-| **Not peer-reviewed** | This algorithm hasn't undergone cryptographic review |
-| **Floating-point variance** | Different CPUs may produce slightly different results |
-| **Warmup as parameter** | Must remember warmup time used for encryption |
-| **No authentication** | Doesn't detect tampering (no MAC/HMAC) |
-
-### Is It Truly Random?
-
-**No.** The system is **chaotic but deterministic**:
-
-- True randomness requires quantum phenomena (radioactive decay, photon noise)
-- Chaos provides *practical unpredictability* but not *theoretical randomness*
-- The SHA-256 hashing spreads entropy uniformly across output bits
-
-The pendulums are an **entropy stretcher**: they take a small seed (your key) and amplify it into a long, unpredictable-looking stream.
-
----
-
 ## 🛠️ Implementation Details
 
 ### Files
