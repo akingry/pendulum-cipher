@@ -485,6 +485,9 @@
             async initialize() {
                 const keyBytes = await sha512(this.key);
                 
+                // Log key hash for debugging
+                console.log(`Key "${this.key}" -> SHA512 first 8 bytes: ${Array.from(keyBytes.slice(0,8)).map(b=>b.toString(16).padStart(2,'0')).join('')}`);
+                
                 const bytesToFloat = (b1, b2) => ((b1 << 8) | b2) / 65536;
                 
                 const params = [];
@@ -517,6 +520,10 @@
                 );
                 
                 this.time = 0;
+                
+                // Log initial state
+                console.log(`P1 initial: θ1=${this.pendulum1.state[0].toFixed(6)}, θ2=${this.pendulum1.state[2].toFixed(6)}`);
+                console.log(`P2 initial: θ1=${this.pendulum2.state[0].toFixed(6)}, θ2=${this.pendulum2.state[2].toFixed(6)}`);
             }
             
             stepAnimation(dt = 0.02) {
@@ -811,7 +818,9 @@
                 }
                 
                 // Log for debugging (can remove later)
-                console.log(`Warmup: ${warmupSteps} steps, time: ${cipher.time.toFixed(4)}s, key: "${key}"`);
+                console.log(`Warmup: ${warmupSteps} steps, time: ${cipher.time.toFixed(6)}s, key: "${key}"`);
+                console.log(`After warmup P1: θ1=${cipher.pendulum1.state[0].toFixed(6)}, θ2=${cipher.pendulum1.state[2].toFixed(6)}`);
+                console.log(`After warmup P2: θ1=${cipher.pendulum2.state[0].toFixed(6)}, θ2=${cipher.pendulum2.state[2].toFixed(6)}`);
                 
                 // Generate keystream and encrypt/decrypt
                 const keystream = await cipher.generateKeystream(data.length);
