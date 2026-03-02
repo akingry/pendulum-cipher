@@ -291,16 +291,28 @@
             display: none;
         }
         
+        /* Desktop: viz left, controls+output stacked right */
+        .panel-viz {
+            grid-row: span 2;
+        }
+        
+        .panel-output {
+            padding-top: 15px;
+        }
+        
         /* Responsive */
         @media (max-width: 900px) {
             .container {
                 grid-template-columns: 1fr;
             }
-            .panel:first-of-type {
+            .panel-controls {
+                order: 1;
+            }
+            .panel-viz {
                 order: 2;
             }
-            .panel:last-of-type {
-                order: 1;
+            .panel-output {
+                order: 3;
             }
         }
     </style>
@@ -309,8 +321,8 @@
     <div class="container">
         <h1>🔐 Double Pendulum Encryption</h1>
         
-        <!-- Left Panel - Visualization -->
-        <div class="panel">
+        <!-- Visualization Panel -->
+        <div class="panel panel-viz">
             <div class="panel-title">Chaos Visualization</div>
             <canvas id="pendulumCanvas"></canvas>
             <div class="status-bar" id="statusBar">Enter a key to initialize pendulums</div>
@@ -320,8 +332,8 @@
             </div>
         </div>
         
-        <!-- Right Panel - Controls -->
-        <div class="panel">
+        <!-- Controls Panel -->
+        <div class="panel panel-controls">
             <div class="panel-title">Encryption Controls</div>
             
             <!-- Key Input -->
@@ -365,6 +377,10 @@
                 <button class="btn-decrypt" id="decryptBtn">🔓 DECRYPT</button>
             </div>
             
+            </div>
+        
+        <!-- Output Panel (separate for mobile reordering) -->
+        <div class="panel panel-output">
             <!-- Progress Bar -->
             <div class="progress-container" id="progressContainer">
                 <div class="progress-bar">
