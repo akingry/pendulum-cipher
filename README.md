@@ -252,23 +252,15 @@ yₙ₊₁ = yₙ + (k₁ + 2k₂ + 2k₃ + k₄)·dt/6
 
 ## 🔗 References
 
-- [Double Pendulum - Wikipedia](https://en.wikipedia.org/wiki/Double_pendulum)
-- [Chaos Theory - Wikipedia](https://en.wikipedia.org/wiki/Chaos_theory)
-- [Stream Cipher - Wikipedia](https://en.wikipedia.org/wiki/Stream_cipher)
-- [Lagrangian Mechanics - Wikipedia](https://en.wikipedia.org/wiki/Lagrangian_mechanics)
+- [The Double Pendulum: Hamiltonian Formulation](https://scienceworld.wolfram.com/physics/DoublePendulum.html) - Wolfram ScienceWorld
+- [Chaos: An Introduction to Dynamical Systems](https://www.springer.com/gp/book/9780387946771) - Kathleen T. Alligood, Tim D. Sauer, James A. Yorke (Springer)
+- [Nonlinear Dynamics and Chaos](https://www.routledge.com/Nonlinear-Dynamics-and-Chaos-With-Applications-to-Physics-Biology-Chemistry/Strogatz/p/book/9780367026509) - Steven H. Strogatz (CRC Press)
+- [Applied Cryptography](https://www.schneier.com/books/applied-cryptography/) - Bruce Schneier (Wiley)
+- [Chaos-Based Cryptography: Theory, Algorithms and Applications](https://link.springer.com/book/10.1007/978-3-642-20542-2) - Springer Studies in Computational Intelligence
+- [NIST Digital Library of Mathematical Functions: Classical Mechanics](https://dlmf.nist.gov/)
 
 ---
 
 ## 📄 License
 
 © 2026 Adam Kingry. All rights reserved.
-
-This software is provided for educational purposes. The author makes no warranties regarding its cryptographic security for protecting sensitive information.
-
----
-
-## 👤 Author
-
-**Adam Kingry**
-
-Created as an exploration of chaos-based cryptography and the beautiful unpredictability of physical systems.
