@@ -336,8 +336,21 @@
                 <div class="slider-hint">(Must match for encrypt/decrypt)</div>
             </div>
             
+            <!-- Output Format -->
+            <div class="format-container" style="margin-bottom: 15px;">
+                <label>Output Format:</label>
+                <div style="display: flex; gap: 15px; margin-top: 5px;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                        <input type="radio" name="outputFormat" value="base64" checked> Base64
+                    </label>
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                        <input type="radio" name="outputFormat" value="words"> Words (BIP39)
+                    </label>
+                </div>
+            </div>
+            
             <!-- Input Text -->
-            <label for="inputText">Input (plaintext or Base64 ciphertext):</label>
+            <label for="inputText">Input (plaintext, Base64, or word sequence):</label>
             <textarea id="inputText" placeholder="Enter text to encrypt, or Base64 to decrypt..."></textarea>
             
             <!-- Buttons -->
@@ -496,6 +509,60 @@
         
         function decompress(data) {
             return pako.inflate(data);
+        }
+        
+        // ========================================
+        // BIP39 WORD ENCODING
+        // ========================================
+        let BIP39_WORDS = null;
+        
+        async function loadBIP39Words() {
+            if (BIP39_WORDS) return BIP39_WORDS;
+            const resp = await fetch('https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt');
+            const text = await resp.text();
+            BIP39_WORDS = text.trim().split('\n');
+            return BIP39_WORDS;
+        }
+        
+        async function bytesToWords(bytes) {
+            const words = await loadBIP39Words();
+            // Convert bytes to 11-bit chunks (BIP39 style)
+            let bits = '';
+            for (const b of bytes) {
+                bits += b.toString(2).padStart(8, '0');
+            }
+            // Pad to multiple of 11
+            while (bits.length % 11 !== 0) {
+                bits += '0';
+            }
+            const result = [];
+            for (let i = 0; i < bits.length; i += 11) {
+                const index = parseInt(bits.slice(i, i + 11), 2);
+                result.push(words[index]);
+            }
+            return result.join(' ');
+        }
+        
+        async function wordsToBytes(wordString) {
+            const words = await loadBIP39Words();
+            const wordList = wordString.trim().toLowerCase().split(/\s+/);
+            let bits = '';
+            for (const w of wordList) {
+                const index = words.indexOf(w);
+                if (index === -1) throw new Error(`Unknown word: ${w}`);
+                bits += index.toString(2).padStart(11, '0');
+            }
+            // Convert bits back to bytes (drop padding)
+            const byteCount = Math.floor(bits.length / 8);
+            const bytes = new Uint8Array(byteCount);
+            for (let i = 0; i < byteCount; i++) {
+                bytes[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+            }
+            return bytes;
+        }
+        
+        function getOutputFormat() {
+            return document.querySelector('input[name="outputFormat"]:checked')?.value || 'base64';
         }
         
         // ========================================
@@ -794,17 +861,24 @@
                     return;
                 }
                 
-                const ciphertextBase64 = document.getElementById('inputText').value.trim();
-                if (!ciphertextBase64) {
-                    alert('Please enter Base64 ciphertext to decrypt');
+                const ciphertextInput = document.getElementById('inputText').value.trim();
+                if (!ciphertextInput) {
+                    alert('Please enter ciphertext to decrypt');
                     return;
                 }
                 
+                // Auto-detect format: if it contains spaces and lowercase words, it's likely word format
+                const looksLikeWords = /^[a-z]+(\s+[a-z]+)+$/i.test(ciphertextInput);
+                
                 let data;
                 try {
-                    data = base64ToBytes(ciphertextBase64);
+                    if (looksLikeWords) {
+                        data = await wordsToBytes(ciphertextInput);
+                    } else {
+                        data = base64ToBytes(ciphertextInput);
+                    }
                 } catch (e) {
-                    alert('Invalid Base64 format');
+                    alert('Invalid format: ' + e.message);
                     return;
                 }
                 
@@ -922,14 +996,20 @@
                 this.setKeystream(preview + '...');
             }
             
-            showResult() {
+            async showResult() {
                 // Display the pre-computed result
                 if (this.pendingMode === 'encrypt') {
-                    const base64Output = bytesToBase64(this.pendingResult);
-                    document.getElementById('outputText').value = base64Output;
-                    const preview = base64Output.slice(0, 48) + (base64Output.length > 48 ? '...' : '');
+                    const format = getOutputFormat();
+                    let output;
+                    if (format === 'words') {
+                        output = await bytesToWords(this.pendingResult);
+                    } else {
+                        output = bytesToBase64(this.pendingResult);
+                    }
+                    document.getElementById('outputText').value = output;
+                    const preview = output.slice(0, 48) + (output.length > 48 ? '...' : '');
                     this.setKeystream(preview);
-                    this.setStatus(`✓ Encrypted & compressed (${this.pendingSteps} steps)`);
+                    this.setStatus(`✓ Encrypted & compressed (${this.pendingSteps} steps, ${format})`);
                     
                 } else if (this.pendingMode === 'decrypt') {
                     let output;
