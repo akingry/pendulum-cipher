@@ -822,12 +822,21 @@
                 console.log(`After warmup P1: θ1=${cipher.pendulum1.state[0].toFixed(6)}, θ2=${cipher.pendulum1.state[2].toFixed(6)}`);
                 console.log(`After warmup P2: θ1=${cipher.pendulum2.state[0].toFixed(6)}, θ2=${cipher.pendulum2.state[2].toFixed(6)}`);
                 
+                // Log message details
+                console.log(`Message length: ${data.length} bytes`);
+                console.log(`Message first 20 bytes: ${Array.from(data.slice(0,20)).map(b=>b.toString(16).padStart(2,'0')).join(' ')}`);
+                console.log(`Message as text: "${new TextDecoder().decode(data).slice(0,50)}${data.length > 50 ? '...' : ''}"`);
+                
                 // Generate keystream and encrypt/decrypt
                 const keystream = await cipher.generateKeystream(data.length);
                 const result = new Uint8Array(data.length);
                 for (let i = 0; i < data.length; i++) {
                     result[i] = data[i] ^ keystream[i];
                 }
+                
+                // Log keystream and result
+                console.log(`Keystream first 10 bytes: ${Array.from(keystream.slice(0,10)).map(b=>b.toString(16).padStart(2,'0')).join(' ')}`);
+                console.log(`Result first 10 bytes: ${Array.from(result.slice(0,10)).map(b=>b.toString(16).padStart(2,'0')).join(' ')}`);
                 
                 return result;
             }
