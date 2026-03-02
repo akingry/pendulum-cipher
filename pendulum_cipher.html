@@ -743,15 +743,18 @@
                     return;
                 }
                 
-                this.pendingData = new TextEncoder().encode(plaintext);
+                const data = new TextEncoder().encode(plaintext);
+                this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
+                
+                // Do all calculation synchronously first (deterministic)
+                const result = await this.runCalculation(key, data, 'encrypt');
+                
+                // Store result for display after animation
+                this.pendingResult = result;
                 this.pendingMode = 'encrypt';
                 
-                // Create fresh cipher
-                this.cipher = new PendulumCipher(key);
-                await this.cipher.initialize();
-                
-                this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
-                this.runDeterministicWarmup();
+                // Now play the animation (purely visual replay)
+                this.playAnimation(key);
             }
             
             async decrypt() {
@@ -767,86 +770,116 @@
                     return;
                 }
                 
+                let data;
                 try {
-                    this.pendingData = hexToBytes(ciphertextHex);
+                    data = hexToBytes(ciphertextHex);
                 } catch (e) {
                     alert('Invalid hex format');
                     return;
                 }
                 
+                this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
+                
+                // Do all calculation synchronously first (deterministic)
+                const result = await this.runCalculation(key, data, 'decrypt');
+                
+                // Store result for display after animation
+                this.pendingResult = result;
                 this.pendingMode = 'decrypt';
                 
-                // Create fresh cipher
+                // Now play the animation (purely visual replay)
+                this.playAnimation(key);
+            }
+            
+            async runCalculation(key, data, mode) {
+                // Create cipher and run everything deterministically
+                const cipher = new PendulumCipher(key);
+                await cipher.initialize();
+                
+                // Fixed timestep warmup
+                const dt = 0.02;
+                for (let i = 0; i < this.targetSteps; i++) {
+                    cipher.pendulum1.step(dt);
+                    cipher.pendulum2.step(dt);
+                    cipher.time += dt;
+                }
+                
+                // Generate keystream and encrypt/decrypt
+                const keystream = await cipher.generateKeystream(data.length);
+                const result = new Uint8Array(data.length);
+                for (let i = 0; i < data.length; i++) {
+                    result[i] = data[i] ^ keystream[i];
+                }
+                
+                return result;
+            }
+            
+            async playAnimation(key) {
+                // Create a SEPARATE cipher just for visual animation
+                // This doesn't affect the already-computed result
                 this.cipher = new PendulumCipher(key);
                 await this.cipher.initialize();
                 
-                this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
-                this.runDeterministicWarmup();
-            }
-            
-            runDeterministicWarmup() {
-                // Run warmup SYNCHRONOUSLY for determinism
-                // The animation is purely visual decoration
                 this.setControls(false);
                 this.showProgress(true);
-                this.setStatus('Running warmup...');
+                this.animationSteps = 0;
+                this.animating = true;
                 
-                // Fixed timestep for deterministic results
-                const dt = 0.02;
+                this.animateVisual();
+            }
+            
+            animateVisual() {
+                if (!this.animating) return;
                 
-                // Run all warmup steps synchronously
-                for (let i = 0; i < this.targetSteps; i++) {
-                    this.cipher.pendulum1.step(dt);
-                    this.cipher.pendulum2.step(dt);
-                    this.cipher.time += dt;
-                }
+                // Step the visual pendulums
+                this.cipher.pendulum1.step(0.02);
+                this.cipher.pendulum2.step(0.02);
+                this.animationSteps++;
                 
                 // Update display
                 this.drawPendulums();
-                this.setProgress(100, `Warmup complete: ${this.targetSteps} steps`);
                 
-                // Now complete the operation
-                this.completeOperation();
+                const progress = Math.min(this.animationSteps / this.targetSteps, 1);
+                this.setProgress(progress * 100, `Warming up chaos... ${Math.round(progress * 100)}%`);
+                
+                if (this.animationSteps < this.targetSteps) {
+                    requestAnimationFrame(() => this.animateVisual());
+                } else {
+                    this.animating = false;
+                    this.showResult();
+                }
             }
             
-            async completeOperation() {
-                this.setStatus('Generating keystream...');
-                
+            showResult() {
+                // Display the pre-computed result
                 if (this.pendingMode === 'encrypt') {
-                    const ciphertext = await this.cipher.encrypt(this.pendingData);
-                    const hexOutput = bytesToHex(ciphertext);
-                    
+                    const hexOutput = bytesToHex(this.pendingResult);
                     document.getElementById('outputText').value = hexOutput;
                     const preview = hexOutput.slice(0, 64) + (hexOutput.length > 64 ? '...' : '');
                     this.setKeystream(preview);
                     this.setStatus(`✓ Encrypted! (warmup: ${this.targetSteps} steps)`);
                     
                 } else if (this.pendingMode === 'decrypt') {
-                    const plaintext = await this.cipher.decrypt(this.pendingData);
-                    
                     let output;
                     try {
-                        output = new TextDecoder().decode(plaintext);
+                        output = new TextDecoder().decode(this.pendingResult);
                     } catch {
-                        const hex = bytesToHex(plaintext);
+                        const hex = bytesToHex(this.pendingResult);
                         output = hex.match(/.{2}/g).slice(0, 100).join(' ');
-                        if (plaintext.length > 100) output += `... (${plaintext.length} bytes total)`;
+                        if (this.pendingResult.length > 100) output += `... (${this.pendingResult.length} bytes total)`;
                     }
-                    
                     document.getElementById('outputText').value = output;
-                    this.setKeystream(`(decrypted ${this.pendingData.length} bytes)`);
+                    this.setKeystream(`(decrypted ${this.pendingResult.length} bytes)`);
                     this.setStatus(`✓ Decrypted! (warmup: ${this.targetSteps} steps)`);
                     
                 } else if (this.pendingMode === 'encrypt-file') {
-                    const ciphertext = await this.cipher.encrypt(this.pendingData);
-                    this.downloadFile(ciphertext, this.pendingFilename + '.enc');
-                    this.setStatus(`✓ Encrypted file: ${this.pendingData.length.toLocaleString()} bytes`);
+                    this.downloadFile(this.pendingResult, this.pendingFilename + '.enc');
+                    this.setStatus(`✓ Encrypted file: ${this.pendingResult.length.toLocaleString()} bytes`);
                     
                 } else if (this.pendingMode === 'decrypt-file') {
-                    const plaintext = await this.cipher.decrypt(this.pendingData);
                     const filename = this.pendingFilename.replace('.enc', '') || 'decrypted';
-                    this.downloadFile(plaintext, filename);
-                    this.setStatus(`✓ Decrypted file: ${this.pendingData.length.toLocaleString()} bytes`);
+                    this.downloadFile(this.pendingResult, filename);
+                    this.setStatus(`✓ Decrypted file: ${this.pendingResult.length.toLocaleString()} bytes`);
                 }
                 
                 this.setControls(true);
@@ -876,15 +909,21 @@
                 }
                 
                 const buffer = await file.arrayBuffer();
-                this.pendingData = new Uint8Array(buffer);
-                this.pendingFilename = file.name;
-                this.pendingMode = this.fileMode + '-file';
-                
-                this.cipher = new PendulumCipher(key);
-                await this.cipher.initialize();
+                const data = new Uint8Array(buffer);
+                const filename = file.name;
                 
                 this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
-                this.startWarmupAnimation();
+                
+                // Do all calculation synchronously first (deterministic)
+                const result = await this.runCalculation(key, data, this.fileMode);
+                
+                // Store result for download after animation
+                this.pendingResult = result;
+                this.pendingFilename = filename;
+                this.pendingMode = this.fileMode + '-file';
+                
+                // Now play the animation (purely visual replay)
+                this.playAnimation(key);
                 
                 event.target.value = '';
             }
