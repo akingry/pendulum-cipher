@@ -7,9 +7,7 @@
 
 ## Overview
 
-Pendulum Cipher is an educational cryptographic tool that demonstrates how deterministic chaos can be used for encryption. It uses the chaotic motion of two simulated double pendulums to generate a cryptographically-secure keystream, which is then XORed with plaintext to produce ciphertext.
-
-**⚠️ Educational Purpose:** This is a demonstration of chaos-based cryptography concepts. For real-world encryption needs, use established algorithms like AES-256.
+Pendulum Cipher is a cryptographic tool that uses deterministic chaos for encryption. It simulates two double pendulums to generate a cryptographically-secure keystream, which is then XORed with plaintext to produce ciphertext.
 
 ---
 
