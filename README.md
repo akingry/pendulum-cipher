@@ -3,7 +3,7 @@
 **A chaos-based encryption system using double pendulums**
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen)](https://akingry.github.io/pendulum-cipher/)
-[![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red)](#license)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Overview
 
@@ -254,4 +254,4 @@ yₙ₊₁ = yₙ + (k₁ + 2k₂ + 2k₃ + k₄)·dt/6
 
 ## 📄 License
 
-© 2026 Adam Kingry. All rights reserved.
+MIT License © 2026 Adam Kingry. See [LICENSE](LICENSE) for details.
