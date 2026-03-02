@@ -746,11 +746,12 @@
                 this.pendingData = new TextEncoder().encode(plaintext);
                 this.pendingMode = 'encrypt';
                 
+                // Create fresh cipher
                 this.cipher = new PendulumCipher(key);
                 await this.cipher.initialize();
                 
                 this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
-                this.startWarmupAnimation();
+                this.runDeterministicWarmup();
             }
             
             async decrypt() {
@@ -775,40 +776,37 @@
                 
                 this.pendingMode = 'decrypt';
                 
+                // Create fresh cipher
                 this.cipher = new PendulumCipher(key);
                 await this.cipher.initialize();
                 
                 this.targetSteps = parseInt(document.getElementById('warmupSlider').value);
-                this.startWarmupAnimation();
+                this.runDeterministicWarmup();
             }
             
-            startWarmupAnimation() {
-                this.animating = true;
-                this.animationSteps = 0;
+            runDeterministicWarmup() {
+                // Run warmup SYNCHRONOUSLY for determinism
+                // The animation is purely visual decoration
                 this.setControls(false);
                 this.showProgress(true);
-                this.animateWarmup();
-            }
-            
-            animateWarmup() {
-                if (!this.animating) return;
+                this.setStatus('Running warmup...');
                 
-                // Step the cipher's pendulums
-                this.cipher.stepAnimation(0.02);
-                this.animationSteps++;
+                // Fixed timestep for deterministic results
+                const dt = 0.02;
+                
+                // Run all warmup steps synchronously
+                for (let i = 0; i < this.targetSteps; i++) {
+                    this.cipher.pendulum1.step(dt);
+                    this.cipher.pendulum2.step(dt);
+                    this.cipher.time += dt;
+                }
                 
                 // Update display
                 this.drawPendulums();
+                this.setProgress(100, `Warmup complete: ${this.targetSteps} steps`);
                 
-                const progress = Math.min(this.animationSteps / this.targetSteps, 1);
-                this.setProgress(progress * 100, `Warming up chaos... ${Math.round(progress * 100)}%`);
-                
-                if (this.animationSteps < this.targetSteps) {
-                    requestAnimationFrame(() => this.animateWarmup());
-                } else {
-                    this.animating = false;
-                    this.completeOperation();
-                }
+                // Now complete the operation
+                this.completeOperation();
             }
             
             async completeOperation() {
