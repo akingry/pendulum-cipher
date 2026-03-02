@@ -140,27 +140,18 @@ Ciphertext ⊕ Keystream = Plaintext
 
 | File | Description |
 |------|-------------|
-| `pendulum_cipher.html` | Standalone web app (HTML + CSS + JavaScript) |
-| `pendulum_cipher_gui.py` | Python GUI version (requires tkinter, numpy, scipy) |
-| `pendulum_cipher.py` | Python CLI version |
-| `double_pendulum_rng.py` | Visual RNG demonstration |
-| `generate_image.py` | Generates random images from pendulum chaos |
+| `index.html` | Standalone web app (HTML + CSS + JavaScript) |
 
 ### Dependencies
 
-**Web version:** None (runs in any modern browser)
-
-**Python version:**
-```bash
-pip install numpy scipy pillow
-```
+None — runs in any modern browser.
 
 ### Physics Constants
 
-```python
-G = 9.81        # Gravitational acceleration (m/s²)
-dt = 0.001      # Simulation timestep for keystream (s)
-dt_warmup = 0.02  # Warmup/animation timestep (s)
+```
+G = 9.81        // Gravitational acceleration (m/s²)
+dt = 0.001      // Simulation timestep for keystream (s)
+dt_warmup = 0.02  // Warmup/animation timestep (s)
 ```
 
 ### Parameter Ranges (derived from key)
@@ -171,47 +162,6 @@ dt_warmup = 0.02  # Warmup/animation timestep (s)
 | m1, m2 | 0.5 - 2.0 kg | Bob masses |
 | θ1, θ2 | 0.2π - 0.8π rad | Initial angles |
 | ω1, ω2 | -1.0 - 1.0 rad/s | Initial angular velocities |
-
----
-
-## 📖 Usage
-
-### Python CLI
-
-```bash
-# Encrypt text
-python pendulum_cipher.py -e -t "Secret message" -k "mypassword"
-
-# Decrypt text  
-python pendulum_cipher.py -d -t "a1b2c3d4..." -k "mypassword"
-
-# Encrypt file
-python pendulum_cipher.py -e -f document.pdf -o document.enc -k "mypassword"
-
-# Decrypt file
-python pendulum_cipher.py -d -f document.enc -o document.pdf -k "mypassword"
-
-# Run demo
-python pendulum_cipher.py --demo
-```
-
-### Python GUI
-
-```bash
-python pendulum_cipher_gui.py
-```
-
----
-
-## 🎨 Random Image Generator
-
-The `generate_image.py` script creates 1080×1080 images where each pixel's RGB values come from the chaotic pendulum system:
-
-```bash
-python generate_image.py
-```
-
-Each pixel = 3 bytes from SHA-256 hash of pendulum state + time.
 
 ---
 
